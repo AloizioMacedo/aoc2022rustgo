@@ -1,8 +1,11 @@
-use day2::{choice::Choice, game::GameResult};
+use day2::{
+    choice::{Choice, ParseChoiceError},
+    game::GameResult,
+};
 
 const CONTENT: &str = include_str!("../input.txt");
 
-fn _parse_choices(contents: &str) -> Result<Vec<(Choice, Choice)>, ()> {
+fn _parse_choices(contents: &str) -> Result<Vec<(Choice, Choice)>, ParseChoiceError> {
     contents
         .lines()
         .map(|line| match line.as_bytes() {
@@ -12,15 +15,21 @@ fn _parse_choices(contents: &str) -> Result<Vec<(Choice, Choice)>, ()> {
 
                 match (first, second) {
                     (Ok(first), Ok(second)) => Ok((first, second)),
-                    _ => Err(()),
+                    _ => Err(ParseChoiceError),
                 }
             }
-            _ => Err(()),
+            _ => Err(ParseChoiceError),
         })
         .collect()
 }
 
-fn _parse_choices_and_necessary_results(contents: &str) -> Result<Vec<(Choice, GameResult)>, ()> {
+// In a real program, we could use the thiserror crate to create better error types.
+#[derive(Debug)]
+struct ParseError;
+
+fn _parse_choices_and_necessary_results(
+    contents: &str,
+) -> Result<Vec<(Choice, GameResult)>, ParseError> {
     contents
         .lines()
         .map(|line| match line.as_bytes() {
@@ -30,16 +39,16 @@ fn _parse_choices_and_necessary_results(contents: &str) -> Result<Vec<(Choice, G
 
                 match (first, second) {
                     (Ok(first), Ok(second)) => Ok((first, second)),
-                    _ => Err(()),
+                    _ => Err(ParseError),
                 }
             }
-            _ => Err(()),
+            _ => Err(ParseError),
         })
         .collect()
 }
 
 // Unites the above parsing functionalities using generics.
-fn parse_file_contents<T, U>(contents: &str) -> Result<Vec<(T, U)>, ()>
+fn parse_file_contents<T, U>(contents: &str) -> Result<Vec<(T, U)>, ParseError>
 where
     T: TryFrom<char>,
     U: TryFrom<char>,
@@ -53,15 +62,15 @@ where
 
                 match (first, second) {
                     (Ok(first), Ok(second)) => Ok((first, second)),
-                    _ => Err(()),
+                    _ => Err(ParseError),
                 }
             }
-            _ => Err(()),
+            _ => Err(ParseError),
         })
         .collect()
 }
 
-fn solve_part_one(contents: &str) -> Result<u32, ()> {
+fn solve_part_one(contents: &str) -> Result<u32, ParseError> {
     let choices = parse_file_contents::<Choice, Choice>(contents)?;
 
     Ok(choices.iter().fold(0, |acc, (their_choice, my_choice)| {
@@ -69,7 +78,7 @@ fn solve_part_one(contents: &str) -> Result<u32, ()> {
     }))
 }
 
-fn solve_part_two(contents: &str) -> Result<u32, ()> {
+fn solve_part_two(contents: &str) -> Result<u32, ParseError> {
     let choices = parse_file_contents::<Choice, GameResult>(contents)?;
 
     Ok(choices
@@ -81,7 +90,7 @@ fn solve_part_two(contents: &str) -> Result<u32, ()> {
         }))
 }
 
-fn main() -> Result<(), ()> {
+fn main() -> Result<(), ParseError> {
     println!("{}", solve_part_one(CONTENT)?);
     println!("{}", solve_part_two(CONTENT)?);
 

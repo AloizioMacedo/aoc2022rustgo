@@ -8,16 +8,19 @@ pub enum Choice {
 }
 
 impl TryFrom<char> for Choice {
-    type Error = ();
+    type Error = ParseChoiceError;
     fn try_from(s: char) -> Result<Self, Self::Error> {
         match s {
             'A' | 'X' => Ok(Choice::Rock),
             'B' | 'Y' => Ok(Choice::Paper),
             'C' | 'Z' => Ok(Choice::Scissors),
-            _ => Err(()),
+            _ => Err(ParseChoiceError),
         }
     }
 }
+
+#[derive(Debug)]
+pub struct ParseChoiceError;
 
 impl From<Choice> for i32 {
     fn from(choice: Choice) -> Self {

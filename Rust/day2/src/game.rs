@@ -27,16 +27,18 @@ impl From<GameResult> for i32 {
 }
 
 impl TryFrom<char> for GameResult {
-    type Error = ();
+    type Error = ParseGameResultError;
     fn try_from(s: char) -> Result<Self, Self::Error> {
         match s {
             'X' => Ok(GameResult::Loss),
             'Y' => Ok(GameResult::Draw),
             'Z' => Ok(GameResult::Win),
-            _ => Err(()),
+            _ => Err(ParseGameResultError),
         }
     }
 }
+
+pub struct ParseGameResultError;
 
 impl GameResult {
     pub fn score(&self) -> u32 {
