@@ -1,51 +1,10 @@
-use day2::{
-    choice::{Choice, ParseChoiceError},
-    game::GameResult,
-};
+use day2::{choice::Choice, game::GameResult};
 
 const CONTENT: &str = include_str!("../input.txt");
-
-fn _parse_choices(contents: &str) -> Result<Vec<(Choice, Choice)>, ParseChoiceError> {
-    contents
-        .lines()
-        .map(|line| match line.as_bytes() {
-            [a, _, b] => {
-                let first = Choice::try_from(*a as char);
-                let second = Choice::try_from(*b as char);
-
-                match (first, second) {
-                    (Ok(first), Ok(second)) => Ok((first, second)),
-                    _ => Err(ParseChoiceError),
-                }
-            }
-            _ => Err(ParseChoiceError),
-        })
-        .collect()
-}
 
 // In a real program, we could use the thiserror crate to create better error types.
 #[derive(Debug)]
 struct ParseError;
-
-fn _parse_choices_and_necessary_results(
-    contents: &str,
-) -> Result<Vec<(Choice, GameResult)>, ParseError> {
-    contents
-        .lines()
-        .map(|line| match line.as_bytes() {
-            [a, _, b] => {
-                let first = Choice::try_from(*a as char);
-                let second = GameResult::try_from(*b as char);
-
-                match (first, second) {
-                    (Ok(first), Ok(second)) => Ok((first, second)),
-                    _ => Err(ParseError),
-                }
-            }
-            _ => Err(ParseError),
-        })
-        .collect()
-}
 
 // Unites the above parsing functionalities using generics.
 fn parse_file_contents<T, U>(contents: &str) -> Result<Vec<(T, U)>, ParseError>
@@ -102,20 +61,6 @@ mod tests {
     use super::*;
 
     const TEST_CONTENT: &str = include_str!("../test_input.txt");
-
-    #[test]
-    fn test_parse_choices() {
-        let choices = _parse_choices(TEST_CONTENT).unwrap();
-
-        assert_eq!(
-            choices,
-            vec![
-                (Choice::Rock, Choice::Paper),
-                (Choice::Paper, Choice::Rock),
-                (Choice::Scissors, Choice::Scissors)
-            ]
-        );
-    }
 
     #[test]
     fn test_part_one() {
