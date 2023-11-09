@@ -27,10 +27,29 @@ impl CraneStacks {
 
         Ok(())
     }
+
+    pub fn mov_9001(&mut self, movement: Movement) -> Result<(), MovementError> {
+        let amount = movement.amount;
+        let origin_len = self.stacks[movement.origin - 1].len();
+
+        if amount > origin_len {
+            return Err(MovementError);
+        }
+
+        let stacks = &mut self.stacks;
+
+        let items: Vec<char> = stacks[movement.origin - 1]
+            .drain((origin_len - amount)..)
+            .collect();
+
+        stacks[movement.destination - 1].extend(items);
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Error)]
-#[error("Debug error")]
+#[error("Movement error")]
 pub struct MovementError;
 
 pub struct Movement {

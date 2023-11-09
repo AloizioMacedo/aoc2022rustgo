@@ -20,6 +20,20 @@ fn solve_part_one(contents: &str) -> Result<String, ExecutionError> {
         .collect())
 }
 
+fn solve_part_two(contents: &str) -> Result<String, ExecutionError> {
+    let (mut crane_stacks, movements) = parse_file_contents(contents)?;
+
+    for movement in movements {
+        crane_stacks.mov_9001(movement)?;
+    }
+
+    Ok(crane_stacks
+        .stacks
+        .iter()
+        .flat_map(|stack| stack.last())
+        .collect())
+}
+
 #[derive(Error, Debug)]
 enum ExecutionError {
     #[error("Parse error")]
@@ -31,6 +45,7 @@ enum ExecutionError {
 
 fn main() -> Result<(), ExecutionError> {
     println!("{}", solve_part_one(INPUT)?);
+    println!("{}", solve_part_two(INPUT)?);
 
     Ok(())
 }
@@ -44,5 +59,10 @@ mod tests {
     #[test]
     fn part_one() {
         assert_eq!(solve_part_one(TEST).unwrap(), "CMZ");
+    }
+
+    #[test]
+    fn part_two() {
+        assert_eq!(solve_part_two(TEST).unwrap(), "MCD");
     }
 }
