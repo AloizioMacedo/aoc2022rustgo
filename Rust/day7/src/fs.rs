@@ -5,7 +5,7 @@ use petgraph::{
 use thiserror::Error;
 
 pub struct FileSystem<'a> {
-    pub fs: DiGraph<FileEntry<'a>, ()>, // Note that multiple entries can have the same name.
+    pub fs: DiGraph<FileEntry<'a>, ()>,
     pub current_path: NodeIndex<u32>,
 }
 
@@ -80,6 +80,10 @@ pub enum FileEntry<'a> {
 }
 
 impl FileEntry<'_> {
+    /// Gets the name associated to an entry.
+    ///
+    /// Note that multiple entries can have the same name, so don't use the name as
+    /// an identifier.
     fn get_name(&self) -> &str {
         match self {
             FileEntry::File(file) => file.name,
