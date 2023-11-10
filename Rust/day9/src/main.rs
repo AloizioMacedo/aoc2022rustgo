@@ -117,24 +117,22 @@ impl Default for Rope {
 
 impl Rope {
     fn mov(&mut self, dir: &Direction) {
-        let delta_head_tail = match dir {
+        match dir {
             Direction::Up => {
                 self.head.1 += -1;
-                self.head - self.tail
             }
             Direction::Down => {
                 self.head.1 += 1;
-                self.head - self.tail
             }
             Direction::Left => {
                 self.head.0 += -1;
-                self.head - self.tail
             }
             Direction::Right => {
                 self.head.0 += 1;
-                self.head - self.tail
             }
         };
+
+        let delta_head_tail = self.head - self.tail;
 
         if delta_head_tail.0.abs().max(delta_head_tail.1.abs()) >= 2 {
             self.tail += Vector(delta_head_tail.0.signum(), delta_head_tail.1.signum());
