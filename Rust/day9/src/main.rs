@@ -47,6 +47,54 @@ impl Sub for Position {
     }
 }
 
+struct BigRope {
+    knots: Vec<Position>,
+
+    visited: HashSet<Position>,
+}
+
+impl BigRope {
+    fn new(knots: usize) -> Self {
+        Self {
+            knots: vec![Position(0, 0); knots],
+            visited: HashSet::from([Position(0, 0)]),
+        }
+    }
+
+    fn mov(&mut self, dir: &Direction) {
+        if self.knots.is_empty() {
+            return;
+        }
+
+        match dir {
+            Direction::Up => {
+                self.knots[0].1 += -1;
+            }
+            Direction::Down => {
+                self.knots[0].1 += 1;
+            }
+            Direction::Left => {
+                self.knots[0].0 += -1;
+            }
+            Direction::Right => {
+                self.knots[0].0 += 1;
+            }
+        };
+
+        for i in 0..(self.knots.len() - 1) {
+            let delta_head_tail = self.knots[i] - self.knots[i + 1];
+
+            if delta_head_tail.0.abs().max(delta_head_tail.1.abs()) >= 2 {
+                self.knots[i + 1] += Vector(delta_head_tail.0.signum(), delta_head_tail.1.signum());
+            }
+        }
+
+        if let Some(last) = self.knots.last() {
+            self.visited.insert(*last);
+        }
+    }
+}
+
 struct Rope {
     head: Position,
     tail: Position,
@@ -130,8 +178,23 @@ fn solve_part_one(contents: &str) -> Result<usize, ParseError> {
     Ok(snake.visited.len())
 }
 
+fn solve_part_two(contents: &str) -> Result<usize, ParseError> {
+    let movements = parse_movements(contents)?;
+
+    let mut snake = BigRope::new(10);
+
+    movements.iter().for_each(|mov| {
+        for _ in 0..mov.steps {
+            snake.mov(&mov.dir);
+        }
+    });
+
+    Ok(snake.visited.len())
+}
+
 fn main() -> Result<(), ParseError> {
-    println!("{:?}", solve_part_one(INPUT));
+    println!("{}", solve_part_one(INPUT)?);
+    println!("{}", solve_part_two(INPUT)?);
 
     Ok(())
 }
@@ -147,5 +210,12 @@ mod tests {
         let contents = TEST;
 
         assert_eq!(solve_part_one(contents).unwrap(), 13);
+    }
+
+    #[test]
+    fn test_part_two() {
+        let contents = TEST;
+
+        assert_eq!(solve_part_two(contents).unwrap(), 1);
     }
 }
