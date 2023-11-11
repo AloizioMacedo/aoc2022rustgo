@@ -4,10 +4,12 @@ use thiserror::Error;
 
 const INPUT: &str = include_str!("../input.txt");
 
+const MULTIPLICATION_OF_DIVISORS: u64 = 2 * 3 * 5 * 7 * 11 * 13 * 17 * 19 * 23;
+
 #[derive(Debug)]
 struct Monkey {
     id: usize,
-    items: Vec<i32>,
+    items: Vec<u64>,
     operation: Operation,
     test: Test,
     inspections: usize,
@@ -19,7 +21,7 @@ struct Game {
 }
 
 impl Game {
-    fn run_round(&mut self) {
+    fn run_round(&mut self, is_relieved: bool) {
         for i in 0..self.monkeys.len() {
             let items = &self.monkeys[i].items.to_vec();
 
@@ -28,11 +30,16 @@ impl Game {
                     Operation::Sum(num) => item + num,
                     Operation::Mul(num) => item * num,
                     Operation::Square => item * item,
-                };
+                }
+                .rem_euclid(MULTIPLICATION_OF_DIVISORS);
 
                 self.monkeys[i].inspections += 1;
 
-                let item_after_bored = item_with_worry / 3;
+                let item_after_bored = if is_relieved {
+                    item_with_worry / 3
+                } else {
+                    item_with_worry
+                };
 
                 let Test {
                     divisible_by,
@@ -40,7 +47,7 @@ impl Game {
                     false_monkey,
                 } = self.monkeys[i].test;
 
-                if item_after_bored % divisible_by as i32 == 0 {
+                if item_after_bored % divisible_by as u64 == 0 {
                     self.monkeys[true_monkey].items.push(item_after_bored);
                 } else {
                     self.monkeys[false_monkey].items.push(item_after_bored);
@@ -54,8 +61,8 @@ impl Game {
 
 #[derive(Debug)]
 enum Operation {
-    Sum(i32),
-    Mul(i32),
+    Sum(u64),
+    Mul(u64),
     Square,
 }
 
@@ -73,7 +80,7 @@ struct Test {
     false_monkey: usize,
 }
 
-fn parse_items(line: &str) -> Result<Vec<i32>, ParseError> {
+fn parse_items(line: &str) -> Result<Vec<u64>, ParseError> {
     let line: Vec<&str> = line
         .trim()
         .split(&[' ', ','])
@@ -193,13 +200,13 @@ fn parse_monkeys(contents: &str) -> Result<Vec<Monkey>, ParseError> {
     Ok(final_monkeys)
 }
 
-fn solve_part_one(contents: &str) -> Result<i32, ParseError> {
+fn solve_part_one(contents: &str) -> Result<u64, ParseError> {
     let monkeys = parse_monkeys(contents)?;
 
     let mut game = Game { monkeys };
 
     for _ in 0..20 {
-        game.run_round()
+        game.run_round(true)
     }
 
     let mut inspections: Vec<usize> = game
@@ -210,11 +217,32 @@ fn solve_part_one(contents: &str) -> Result<i32, ParseError> {
 
     inspections.sort();
 
-    Ok(inspections.iter().rev().take(2).product::<usize>() as i32)
+    Ok(inspections.iter().rev().take(2).product::<usize>() as u64)
+}
+
+fn solve_part_two(contents: &str) -> Result<u64, ParseError> {
+    let monkeys = parse_monkeys(contents)?;
+
+    let mut game = Game { monkeys };
+
+    for _ in 0..10000 {
+        game.run_round(false)
+    }
+
+    let mut inspections: Vec<usize> = game
+        .monkeys
+        .iter()
+        .map(|monkey| monkey.inspections)
+        .collect();
+
+    inspections.sort();
+
+    Ok(inspections.iter().rev().take(2).product::<usize>() as u64)
 }
 
 fn main() -> Result<(), ParseError> {
     println!("{}", solve_part_one(INPUT)?);
+    println!("{}", solve_part_two(INPUT)?);
 
     Ok(())
 }
@@ -234,5 +262,10 @@ mod tests {
     #[test]
     fn test_part_one() {
         assert_eq!(solve_part_one(TEST).unwrap(), 10605);
+    }
+
+    #[test]
+    fn test_part_two() {
+        assert_eq!(solve_part_two(TEST).unwrap(), 2713310158);
     }
 }
