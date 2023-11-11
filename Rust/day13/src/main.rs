@@ -22,6 +22,53 @@ fn get_pairs(contents: &str) -> Vec<Pair> {
         .collect()
 }
 
+fn get_jsons(contents: &str) -> Result<Vec<OrderableJson>, ParsingError> {
+    contents
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(|line| match serde_json::from_str(line) {
+            Ok(json) => Ok(OrderableJson(json)),
+            _ => Err(ParsingError(line.to_string())),
+        })
+        .collect()
+}
+
+fn solve_part_two(contents: &str) -> Result<usize, ParsingError> {
+    let mut jsons = get_jsons(contents)?;
+    jsons.push(OrderableJson(json!([[2]])));
+    jsons.push(OrderableJson(json!([[6]])));
+
+    jsons.sort_by(|a, b| a.partial_cmp(b).expect("Should be able to compare JSONs."));
+
+    let first_pos = jsons
+        .iter()
+        .position(|x| x.0 == json!([[2]]))
+        .expect("[[2]] should be present, since it was added just before");
+
+    let second_pos = jsons
+        .iter()
+        .position(|x| x.0 == json!([[6]]))
+        .expect("[[6]] should be present, since it was added just before");
+
+    Ok((first_pos + 1) * (second_pos + 1))
+}
+
+#[derive(Eq, PartialEq)]
+struct OrderableJson(serde_json::Value);
+
+impl std::cmp::PartialOrd for OrderableJson {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        let me = &self.0;
+        let other = &other.0;
+
+        match is_valid_json_pair(me, other).ok()? {
+            EvaluationResult::Valid => Some(std::cmp::Ordering::Less),
+            EvaluationResult::Inconclusive => Some(std::cmp::Ordering::Equal),
+            EvaluationResult::Invalid => Some(std::cmp::Ordering::Greater),
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 #[error("Parsing error")]
 struct ParsingError(String);
@@ -42,6 +89,7 @@ fn is_valid(pair: &Pair) -> Result<bool, ParsingError> {
     }
 }
 
+#[derive(Debug)]
 enum EvaluationResult {
     Valid,
     Inconclusive,
@@ -106,6 +154,7 @@ fn solve_part_one(contents: &str) -> Result<usize, ParsingError> {
 
 fn main() -> Result<(), ParsingError> {
     println!("{}", solve_part_one(INPUT)?);
+    println!("{}", solve_part_two(INPUT)?);
 
     Ok(())
 }
@@ -118,5 +167,10 @@ mod tests {
     #[test]
     fn part_one() {
         assert_eq!(solve_part_one(TEST).unwrap(), 13)
+    }
+
+    #[test]
+    fn part_two() {
+        assert_eq!(solve_part_two(TEST).unwrap(), 140)
     }
 }
