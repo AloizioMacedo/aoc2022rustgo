@@ -4,13 +4,13 @@ use thiserror::Error;
 
 const INPUT: &str = include_str!("../input.txt");
 
-struct CPU {
+struct Cpu {
     current_cycle: i32,
     register: i32,
     values_history: Vec<i32>,
 }
 
-impl Default for CPU {
+impl Default for Cpu {
     fn default() -> Self {
         Self {
             current_cycle: 1,
@@ -20,7 +20,7 @@ impl Default for CPU {
     }
 }
 
-impl CPU {
+impl Cpu {
     fn process_command(&mut self, command: &Command) {
         match command {
             Command::Noop => {
@@ -49,8 +49,11 @@ impl CPU {
         }
     }
 
-    fn get_history(&self) -> Vec<i32> {
-        [self.values_history.to_vec(), vec![self.register]].concat()
+    fn get_history(&self) -> impl Iterator<Item = i32> + '_ {
+        let history = self.values_history.iter().copied();
+        let register = self.register;
+
+        history.chain(std::iter::once(register))
     }
 }
 
@@ -84,7 +87,7 @@ fn get_commands(contents: &str) -> Result<Vec<Command>, ParseError> {
 fn solve_part_one(contents: &str) -> Result<i32, ParseError> {
     let commands = get_commands(contents)?;
 
-    let mut cpu = CPU::default();
+    let mut cpu = Cpu::default();
 
     for command in commands {
         cpu.process_command(&command);
@@ -92,7 +95,6 @@ fn solve_part_one(contents: &str) -> Result<i32, ParseError> {
 
     Ok(cpu
         .get_history()
-        .iter()
         .enumerate()
         .skip(20)
         .step_by(40)
@@ -122,7 +124,7 @@ mod tests {
     fn test_part_one() {
         let commands = get_commands(TEST).unwrap();
 
-        let mut cpu = CPU::default();
+        let mut cpu = Cpu::default();
 
         for command in commands {
             cpu.process_command(&command);
