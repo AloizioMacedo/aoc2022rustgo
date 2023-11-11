@@ -1,13 +1,28 @@
-use std::num::ParseIntError;
+use std::{fmt::Display, num::ParseIntError};
 
 use thiserror::Error;
 
 const INPUT: &str = include_str!("../input.txt");
 
+enum Pixel {
+    Lit,
+    Dark,
+}
+
+impl Display for Pixel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Pixel::Lit => write!(f, "#"),
+            Pixel::Dark => write!(f, "."),
+        }
+    }
+}
+
 struct Cpu {
-    current_cycle: i32,
+    current_cycle: usize,
     register: i32,
     values_history: Vec<i32>,
+    pixels: Vec<Pixel>,
 }
 
 impl Default for Cpu {
@@ -16,16 +31,37 @@ impl Default for Cpu {
             current_cycle: 1,
             register: 1,
             values_history: vec![i32::MAX],
+            pixels: vec![],
         }
     }
 }
 
 impl Cpu {
+    fn draw_crt(&self) {
+        for row in self.pixels.chunks(40) {
+            for pixel in row {
+                print!("{}", pixel);
+            }
+            println!();
+        }
+    }
+
+    fn draw_pixel(&mut self) {
+        if ((self.current_cycle - 1).rem_euclid(40) + 1).abs_diff((self.register + 1) as usize) <= 1
+        {
+            self.pixels.push(Pixel::Lit)
+        } else {
+            self.pixels.push(Pixel::Dark)
+        }
+    }
+
     fn process_command(&mut self, command: &Command) {
         match command {
             Command::Noop => {
                 // Start of the cycle, value is the same.
                 self.values_history.push(self.register);
+
+                self.draw_pixel();
 
                 // Ends the cycle.
                 self.current_cycle += 1;
@@ -34,11 +70,15 @@ impl Cpu {
                 // Start of the cycle, value is the same.
                 self.values_history.push(self.register);
 
+                self.draw_pixel();
+
                 // Ends the cycle.
                 self.current_cycle += 1;
 
                 // Start of the cycle, value is the same.
                 self.values_history.push(self.register);
+
+                self.draw_pixel();
 
                 // Ends the cycle.
                 self.current_cycle += 1;
@@ -101,8 +141,23 @@ fn solve_part_one(contents: &str) -> Result<i32, ParseError> {
         .fold(0, |acc, (i, v)| acc + (i as i32) * v))
 }
 
+fn solve_part_two(contents: &str) -> Result<(), ParseError> {
+    let commands = get_commands(contents)?;
+
+    let mut cpu = Cpu::default();
+
+    for command in commands {
+        cpu.process_command(&command);
+    }
+
+    cpu.draw_crt();
+
+    Ok(())
+}
+
 fn main() -> Result<(), ParseError> {
     println!("{}", solve_part_one(INPUT)?);
+    solve_part_two(INPUT)?;
 
     Ok(())
 }
@@ -111,6 +166,7 @@ fn main() -> Result<(), ParseError> {
 mod tests {
     use super::*;
     const TEST: &str = include_str!("../test_input.txt");
+    const TEST2: &str = include_str!("../test_input2.txt");
 
     #[test]
     fn test_get_commands() {
@@ -131,5 +187,10 @@ mod tests {
         }
 
         assert_eq!(cpu.register, -1)
+    }
+
+    #[test]
+    fn test_part_two() {
+        solve_part_two(TEST2).unwrap();
     }
 }
