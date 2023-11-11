@@ -73,7 +73,7 @@ struct Maze {
     end: (usize, usize),
 }
 
-fn get_maze(contents: &str) -> Result<Maze, GraphParsingError> {
+fn get_maze(contents: &str) -> Result<(Maze, Array2<Entry>), GraphParsingError> {
     let lines: Vec<&str> = contents.lines().collect();
     let n_rows = lines.len();
     let n_columns = lines[0].len();
@@ -97,11 +97,14 @@ fn get_maze(contents: &str) -> Result<Maze, GraphParsingError> {
     }
 
     match (start, end) {
-        (Some(start), Some(end)) => Ok(Maze {
-            graph: build_graph(&matrix),
-            start,
-            end,
-        }),
+        (Some(start), Some(end)) => Ok((
+            Maze {
+                graph: build_graph(&matrix),
+                start,
+                end,
+            },
+            matrix,
+        )),
         _ => Err(GraphParsingError::NoStartOrEnd),
     }
 }
@@ -142,13 +145,29 @@ fn build_valid_candidates(
 }
 
 fn solve_part_one(contents: &str) -> Result<u64, GraphParsingError> {
-    let maze = get_maze(contents)?;
+    let (maze, _) = get_maze(contents)?;
 
     Ok(dijkstra(&maze.graph, maze.start, Some(maze.end), |_| 1)[&maze.end])
 }
 
+fn solve_part_two(contents: &str) -> Result<u64, GraphParsingError> {
+    let (maze, matrix) = get_maze(contents)?;
+
+    maze.graph
+        .nodes()
+        .filter(|node| matrix[*node].elevation() == 0)
+        .flat_map(|node| {
+            dijkstra(&maze.graph, node, Some(maze.end), |_| 1)
+                .get(&maze.end)
+                .copied()
+        })
+        .min()
+        .ok_or(GraphParsingError::NoStartOrEnd)
+}
+
 fn main() -> Result<(), GraphParsingError> {
     println!("{}", solve_part_one(INPUT)?);
+    println!("{}", solve_part_two(INPUT)?);
 
     Ok(())
 }
@@ -161,5 +180,10 @@ mod tests {
     #[test]
     fn part_one() {
         assert_eq!(solve_part_one(TEST).unwrap(), 31)
+    }
+
+    #[test]
+    fn part_two() {
+        assert_eq!(solve_part_two(TEST).unwrap(), 29)
     }
 }
