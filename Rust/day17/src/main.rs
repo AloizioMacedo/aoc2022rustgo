@@ -111,7 +111,7 @@ struct Wall {
     current_jet_index: usize,
 
     cycle_keys: HashMap<CycleDetector, usize>,
-    height_where_cycle_was_detected: Option<usize>,
+    counter_where_cycle_was_detected: Option<usize>,
 }
 
 impl Default for Wall {
@@ -132,7 +132,7 @@ impl Default for Wall {
             jets: vec![],
             current_jet_index: 0,
             cycle_keys: HashMap::new(),
-            height_where_cycle_was_detected: None,
+            counter_where_cycle_was_detected: None,
         }
     }
 }
@@ -227,7 +227,7 @@ impl Wall {
         }
     }
 
-    fn drop_until_done(&mut self) {
+    fn drop_until_done(&mut self, counter: usize) {
         loop {
             // let mut buffer = String::new();
             // std::io::stdin().read_line(&mut buffer).unwrap();
@@ -257,12 +257,12 @@ impl Wall {
                     highest_floor[position.1 as usize] = true;
                 }
 
-                if let Some(height) = self.cycle_keys.get(&CycleDetector {
+                if let Some(counter_where_detected) = self.cycle_keys.get(&CycleDetector {
                     highest_floor,
                     piece: self.current_piece.next(),
                     jet_index: self.current_jet_index,
                 }) {
-                    self.height_where_cycle_was_detected = Some(*height);
+                    self.counter_where_cycle_was_detected = Some(*counter_where_detected);
                 } else {
                     self.cycle_keys.insert(
                         CycleDetector {
@@ -270,7 +270,7 @@ impl Wall {
                             piece: self.current_piece.next(),
                             jet_index: self.current_jet_index,
                         },
-                        self.current_max_height_idx + 1,
+                        counter,
                     );
                 }
 
@@ -300,7 +300,7 @@ impl Wall {
                 highest_floor[position.1 as usize] = true;
             }
 
-            if let Some(x) = self.height_where_cycle_was_detected {
+            if let Some(counter_where_cycle_was_detected) = self.counter_where_cycle_was_detected {
                 let cycle = match cycle_count {
                     Some(count) => count,
                     None => {
@@ -310,11 +310,7 @@ impl Wall {
                 };
 
                 if cycle + counter < times {
-                    let idx = heights
-                        .iter()
-                        .position(|&height| height == x)
-                        .expect("Index should exist since a cycle was detected");
-
+                    let idx = counter_where_cycle_was_detected;
                     let n = (times - (idx + 1)) / (counter - (idx + 1));
                     let new_heights = heights[idx..counter].to_vec();
 
@@ -349,7 +345,7 @@ impl Wall {
                     counter = times;
                 }
             } else {
-                self.drop_until_done();
+                self.drop_until_done(counter);
                 heights.push(self.current_max_height_idx + 1);
 
                 counter += 1;
@@ -391,8 +387,8 @@ fn solve_part_one(contents: &str) -> Result<usize, ParseError> {
     let jets = parse_jets(contents)?;
     let mut wall = Wall::new(jets);
 
-    for _ in 0..2022 {
-        wall.drop_until_done();
+    for counter in 0..2022 {
+        wall.drop_until_done(counter);
     }
 
     Ok(wall.current_max_height_idx + 1)
