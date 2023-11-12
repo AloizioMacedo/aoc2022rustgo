@@ -56,10 +56,10 @@ impl Piece {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct Vector(i32, i32);
+struct Vector(i64, i64);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct Position(i32, i32);
+struct Position(i64, i64);
 
 struct PieceRelativePos {
     places: Vec<Vector>,
@@ -104,7 +104,7 @@ struct Wall {
     rocks: Vec<Position>,
     current_piece_pos: Position,
     current_piece: Piece,
-    current_max_height: i32,
+    current_max_height: usize,
     jets: Vec<Jet>,
     current_jet_index: usize,
 }
@@ -146,7 +146,7 @@ impl Wall {
             _ => 4,
         };
 
-        self.current_piece_pos = Position(self.current_max_height + height_up, 2);
+        self.current_piece_pos = Position((self.current_max_height + height_up) as i64, 2);
     }
 
     fn swoosh(&mut self) {
@@ -209,7 +209,7 @@ impl Wall {
                 .map(|p| p.0)
                 .max()
                 .expect("All pieces are non empty")
-                .max(self.current_max_height);
+                .max(self.current_max_height as i64) as usize;
             self.rocks.extend(piece_positions);
 
             Err(())
@@ -266,7 +266,7 @@ fn parse_jets(contents: &str) -> Result<Vec<Jet>, ParseError> {
         .collect()
 }
 
-fn solve_part_one(contents: &str) -> Result<i32, ParseError> {
+fn solve_part_one(contents: &str) -> Result<usize, ParseError> {
     let jets = parse_jets(contents)?;
     let mut wall = Wall::new(jets);
 
@@ -277,8 +277,13 @@ fn solve_part_one(contents: &str) -> Result<i32, ParseError> {
     Ok(wall.current_max_height + 1)
 }
 
+fn solve_part_two(contents: &str) -> Result<usize, ParseError> {
+    todo!()
+}
+
 fn main() -> Result<(), ParseError> {
     println!("{}", solve_part_one(INPUT)?);
+    println!("{}", solve_part_two(INPUT)?);
 
     Ok(())
 }
