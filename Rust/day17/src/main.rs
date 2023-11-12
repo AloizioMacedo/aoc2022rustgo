@@ -111,6 +111,7 @@ struct Wall {
     current_jet_index: usize,
 
     cycle_keys: HashMap<CycleDetector, usize>,
+    height_where_cycle_was_detected: Option<usize>,
 }
 
 impl Default for Wall {
@@ -131,6 +132,7 @@ impl Default for Wall {
             jets: vec![],
             current_jet_index: 0,
             cycle_keys: HashMap::new(),
+            height_where_cycle_was_detected: None,
         }
     }
 }
@@ -255,14 +257,22 @@ impl Wall {
                     highest_floor[position.1 as usize] = true;
                 }
 
-                self.cycle_keys.insert(
-                    CycleDetector {
-                        highest_floor,
-                        piece: self.current_piece,
-                        jet_index: self.current_jet_index,
-                    },
-                    self.current_max_height_idx + 1,
-                );
+                if let Some(height) = self.cycle_keys.get(&CycleDetector {
+                    highest_floor,
+                    piece: self.current_piece.next(),
+                    jet_index: self.current_jet_index,
+                }) {
+                    self.height_where_cycle_was_detected = Some(*height);
+                } else {
+                    self.cycle_keys.insert(
+                        CycleDetector {
+                            highest_floor,
+                            piece: self.current_piece.next(),
+                            jet_index: self.current_jet_index,
+                        },
+                        self.current_max_height_idx + 1,
+                    );
+                }
 
                 break;
             }
@@ -275,28 +285,22 @@ impl Wall {
         let mut counter = 0;
         let mut cycle_count = None;
         let mut heights = Vec::new();
-
-        let mut last_cycle_keys_len = self.cycle_keys.len();
-        let mut should_short_circuit = false;
+        let mut delta = None;
 
         while counter < times {
-            let highest_positions = self
+            let highest_positions: Vec<&Position> = self
                 .rocks
                 .iter()
-                .filter(|rock| rock.0 == self.current_max_height_idx as i64);
+                .filter(|rock| rock.0 == *heights.last().unwrap_or(&0) as i64 - 1)
+                .collect();
 
             let mut highest_floor = [false; 7];
 
-            for position in highest_positions {
+            for position in highest_positions.iter() {
                 highest_floor[position.1 as usize] = true;
             }
 
-            // if let Some(_) = self.cycle_keys.get(&CycleDetector {
-            //     highest_floor,
-            //     piece: self.current_piece,
-            //     jet_index: self.current_jet_index,
-            // })
-            if should_short_circuit {
+            if let Some(x) = self.height_where_cycle_was_detected {
                 let cycle = match cycle_count {
                     Some(count) => count,
                     None => {
@@ -305,15 +309,38 @@ impl Wall {
                     }
                 };
 
-                let last = *heights.last().expect("Heights should not be empty");
-
                 if cycle + counter < times {
-                    let n = times / cycle;
+                    let idx = heights
+                        .iter()
+                        .position(|&height| height == x)
+                        .expect("Index should exist since a cycle was detected");
 
-                    heights.iter_mut().for_each(|h| *h += n * last);
+                    let n = (times - (idx + 1)) / (counter - (idx + 1));
+                    let new_heights = heights[idx..counter].to_vec();
 
-                    counter += n * cycle
+                    let new_delta: Vec<usize> = new_heights
+                        .iter()
+                        .map(|x| {
+                            x - new_heights
+                                .first()
+                                .expect("New heights should not be empty")
+                        })
+                        .collect();
+
+                    let new_delta = new_delta[1..].to_vec();
+                    let mut new_heights = new_heights[..(new_heights.len() - 1)].to_vec();
+
+                    let last = new_delta.last().expect("Diffs should not be empty");
+
+                    new_heights.iter_mut().for_each(|h| *h += (n - 1) * last);
+
+                    delta = Some(new_delta);
+                    heights = new_heights;
+                    counter = idx + n * (counter - (idx + 1));
                 } else {
+                    let delta = delta.clone().expect("Should not be None by here");
+                    let last = delta.last().expect("Diffs should not be empty");
+
                     heights[0..(times - counter)]
                         .iter_mut()
                         .for_each(|h| *h += last);
@@ -326,11 +353,6 @@ impl Wall {
                 heights.push(self.current_max_height_idx + 1);
 
                 counter += 1;
-                if last_cycle_keys_len == self.cycle_keys.len() {
-                    should_short_circuit = true;
-                } else {
-                    last_cycle_keys_len = self.cycle_keys.len();
-                }
             }
         }
 
@@ -376,19 +398,18 @@ fn solve_part_one(contents: &str) -> Result<usize, ParseError> {
     Ok(wall.current_max_height_idx + 1)
 }
 
-fn solve_part_two(contents: &str) -> Result<usize, ParseError> {
+fn solve_part_two(contents: &str, n: usize) -> Result<usize, ParseError> {
     let jets = parse_jets(contents)?;
     let mut wall = Wall::new(jets);
 
-    let result = wall.run(1000000000000);
+    let result = wall.run(n);
 
     Ok(result)
 }
 
 fn main() -> Result<(), ParseError> {
     println!("{}", solve_part_one(INPUT)?);
-    println!("{}", solve_part_two(INPUT)?);
-
+    println!("{}", solve_part_two(INPUT, 1_000_000_000_000)?);
     Ok(())
 }
 
@@ -404,6 +425,14 @@ mod tests {
 
     #[test]
     fn part_two() {
-        assert_eq!(solve_part_two(TEST).unwrap(), 1514285714288);
+        assert_eq!(solve_part_two(TEST, 2022).unwrap(), 3068);
+    }
+
+    #[test]
+    fn part_two_big() {
+        assert_eq!(
+            solve_part_two(TEST, 1_000_000_000_000).unwrap(),
+            1514285714288
+        );
     }
 }
