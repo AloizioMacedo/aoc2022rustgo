@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+
 use thiserror::Error;
 
 const INPUT: &str = include_str!("../input.txt");
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 enum Piece {
     Horizontal,
     Cross,
@@ -104,9 +106,11 @@ struct Wall {
     rocks: Vec<Position>,
     current_piece_pos: Position,
     current_piece: Piece,
-    current_max_height: usize,
+    current_max_height_idx: usize,
     jets: Vec<Jet>,
     current_jet_index: usize,
+
+    cycle_keys: HashMap<CycleDetector, usize>,
 }
 
 impl Default for Wall {
@@ -123,9 +127,10 @@ impl Default for Wall {
             ],
             current_piece: Piece::Horizontal,
             current_piece_pos: Position(3, 2),
-            current_max_height: 0,
+            current_max_height_idx: 0,
             jets: vec![],
             current_jet_index: 0,
+            cycle_keys: HashMap::new(),
         }
     }
 }
@@ -146,7 +151,7 @@ impl Wall {
             _ => 4,
         };
 
-        self.current_piece_pos = Position((self.current_max_height + height_up) as i64, 2);
+        self.current_piece_pos = Position((self.current_max_height_idx + height_up) as i64, 2);
     }
 
     fn swoosh(&mut self) {
@@ -204,12 +209,13 @@ impl Wall {
             .collect();
 
         if supposed_positions.intersects(&self.rocks) {
-            self.current_max_height = piece_positions
+            self.current_max_height_idx = piece_positions
                 .iter()
                 .map(|p| p.0)
                 .max()
                 .expect("All pieces are non empty")
-                .max(self.current_max_height as i64) as usize;
+                .max(self.current_max_height_idx as i64)
+                as usize;
             self.rocks.extend(piece_positions);
 
             Err(())
@@ -238,11 +244,97 @@ impl Wall {
 
             let drop_result = self.drop_one_step();
             if drop_result.is_err() {
+                let highest_positions = self
+                    .rocks
+                    .iter()
+                    .filter(|rock| rock.0 == self.current_max_height_idx as i64);
+
+                let mut highest_floor = [false; 7];
+
+                for position in highest_positions {
+                    highest_floor[position.1 as usize] = true;
+                }
+
+                self.cycle_keys.insert(
+                    CycleDetector {
+                        highest_floor,
+                        piece: self.current_piece,
+                        jet_index: self.current_jet_index,
+                    },
+                    self.current_max_height_idx + 1,
+                );
+
                 break;
             }
         }
 
         self.add_piece();
+    }
+
+    fn run(&mut self, times: usize) -> usize {
+        let mut counter = 0;
+        let mut cycle_count = None;
+        let mut heights = Vec::new();
+
+        let mut last_cycle_keys_len = self.cycle_keys.len();
+        let mut should_short_circuit = false;
+
+        while counter < times {
+            let highest_positions = self
+                .rocks
+                .iter()
+                .filter(|rock| rock.0 == self.current_max_height_idx as i64);
+
+            let mut highest_floor = [false; 7];
+
+            for position in highest_positions {
+                highest_floor[position.1 as usize] = true;
+            }
+
+            // if let Some(_) = self.cycle_keys.get(&CycleDetector {
+            //     highest_floor,
+            //     piece: self.current_piece,
+            //     jet_index: self.current_jet_index,
+            // })
+            if should_short_circuit {
+                let cycle = match cycle_count {
+                    Some(count) => count,
+                    None => {
+                        cycle_count = Some(counter);
+                        counter
+                    }
+                };
+
+                let last = *heights.last().expect("Heights should not be empty");
+
+                if cycle + counter < times {
+                    let n = times / cycle;
+
+                    heights.iter_mut().for_each(|h| *h += n * last);
+
+                    counter += n * cycle
+                } else {
+                    heights[0..(times - counter)]
+                        .iter_mut()
+                        .for_each(|h| *h += last);
+                    heights = heights[0..(times - counter)].to_vec();
+
+                    counter = times;
+                }
+            } else {
+                self.drop_until_done();
+                heights.push(self.current_max_height_idx + 1);
+
+                counter += 1;
+                if last_cycle_keys_len == self.cycle_keys.len() {
+                    should_short_circuit = true;
+                } else {
+                    last_cycle_keys_len = self.cycle_keys.len();
+                }
+            }
+        }
+
+        *heights.last().expect("Heights should not be empty")
     }
 }
 
@@ -266,6 +358,13 @@ fn parse_jets(contents: &str) -> Result<Vec<Jet>, ParseError> {
         .collect()
 }
 
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+struct CycleDetector {
+    highest_floor: [bool; 7],
+    piece: Piece,
+    jet_index: usize,
+}
+
 fn solve_part_one(contents: &str) -> Result<usize, ParseError> {
     let jets = parse_jets(contents)?;
     let mut wall = Wall::new(jets);
@@ -274,11 +373,16 @@ fn solve_part_one(contents: &str) -> Result<usize, ParseError> {
         wall.drop_until_done();
     }
 
-    Ok(wall.current_max_height + 1)
+    Ok(wall.current_max_height_idx + 1)
 }
 
 fn solve_part_two(contents: &str) -> Result<usize, ParseError> {
-    todo!()
+    let jets = parse_jets(contents)?;
+    let mut wall = Wall::new(jets);
+
+    let result = wall.run(1000000000000);
+
+    Ok(result)
 }
 
 fn main() -> Result<(), ParseError> {
@@ -294,7 +398,12 @@ mod tests {
     const TEST: &str = include_str!("../test_input.txt");
 
     #[test]
-    fn it_works() {
+    fn part_one() {
         assert_eq!(solve_part_one(TEST).unwrap(), 3068);
+    }
+
+    #[test]
+    fn part_two() {
+        assert_eq!(solve_part_two(TEST).unwrap(), 1514285714288);
     }
 }
